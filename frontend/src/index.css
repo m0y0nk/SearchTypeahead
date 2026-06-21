@@ -27,7 +27,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 5rem;
+  padding-top: 2rem;
 }
 
 .container {
@@ -51,7 +51,7 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 1.25rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -164,7 +164,7 @@ body {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .panel-section {
@@ -216,26 +216,26 @@ body {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
 }
 
 .metric-card {
   background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
+  padding: 0.75rem 0.25rem;
   border-radius: 8px;
   text-align: center;
 }
 
 .metric-value {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #38bdf8;
   margin-bottom: 0.25rem;
 }
 
 .metric-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
