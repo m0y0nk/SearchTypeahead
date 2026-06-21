@@ -34,6 +34,16 @@ export class BatchWriter {
     return this.buffer.size;
   }
 
+  public getPendingSuggestions(prefix: string): { query: string, count: number }[] {
+    const matches: { query: string, count: number }[] = [];
+    for (const [query, entry] of this.buffer.entries()) {
+      if (query.startsWith(prefix)) {
+        matches.push({ query, count: entry.count });
+      }
+    }
+    return matches;
+  }
+
   public recordSearch(query: string) {
     // Normalize query
     query = query.toLowerCase().trim();
@@ -47,6 +57,13 @@ export class BatchWriter {
       this.totalWritesAvoided += 1; // Counted as an avoided DB write since we batch it
     } else {
       this.buffer.set(query, { count: 1, last_searched_at: now });
+    }
+
+    // Invalidate cache immediately for real-time responsiveness
+    const maxPrefixLen = Math.min(query.length, 15);
+    for (let i = 3; i <= maxPrefixLen; i++) {
+      const prefix = query.substring(0, i);
+      cacheManager.invalidatePrefix(prefix).catch(err => console.error(err));
     }
 
     if (this.buffer.size >= this.maxBatchSize) {
@@ -92,14 +109,6 @@ export class BatchWriter {
           entry.last_searched_at,
           LAMBDA
         ]);
-
-        // Invalidate cache prefixes
-        // Standard approach: invalidate prefixes length >= 3
-        const maxPrefixLen = Math.min(query.length, 15);
-        for (let i = 3; i <= maxPrefixLen; i++) {
-          const prefix = query.substring(0, i);
-          cacheManager.invalidatePrefix(prefix).catch(err => console.error(err));
-        }
       }
 
       await client.query('COMMIT');

@@ -64,11 +64,35 @@ app.get('/api/suggest', async (req: Request, res: Response) => {
     }
 
     const { rows } = await pool.query(dbQuery, [`${prefix}%`]);
-    const results = rows.map(r => ({
+    let results = rows.map(r => ({
       query: r.query,
       all_time_count: r.all_time_count,
       decayed_score: r.decayed_score
     }));
+
+    // Merge pending from batch buffer for instantaneous consistency
+    const pending = batchWriter.getPendingSuggestions(prefix);
+    for (const p of pending) {
+      const existing = results.find(r => r.query === p.query);
+      if (existing) {
+        if (algorithm === 'basic') existing.all_time_count = (existing.all_time_count || 0) + p.count;
+        if (algorithm === 'decay') existing.decayed_score = (existing.decayed_score || 0) + p.count;
+      } else {
+        results.push({
+          query: p.query,
+          all_time_count: p.count,
+          decayed_score: p.count
+        });
+      }
+    }
+
+    // Sort again and take top 10 after merge
+    if (algorithm === 'basic') {
+      results.sort((a, b) => (b.all_time_count || 0) - (a.all_time_count || 0));
+    } else {
+      results.sort((a, b) => (b.decayed_score || 0) - (a.decayed_score || 0));
+    }
+    results = results.slice(0, 10);
 
     // 3. Update Cache
     await cacheManager.setSuggestions(prefix, algorithm, results, 60);
