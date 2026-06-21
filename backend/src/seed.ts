@@ -59,7 +59,7 @@ async function runSeed() {
 
     const query = rawQuery.toLowerCase().trim();
     // Basic validation: length, only punctuation, etc.
-    if (query.length < 2 || !/[a-z0-9]/.test(query)) continue;
+    if (query.length < 2 || query.length > 255 || !/[a-z0-9]/.test(query)) continue;
 
     // Profanity Filter Check
     if (isProfane(query)) {
