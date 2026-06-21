@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Flame, Activity, Server, Zap, Database } from 'lucide-react';
+import { Search, Flame, Activity, Server, Zap, Database, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import './index.css';
 
@@ -102,6 +102,8 @@ function App() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [searchResult, setSearchResult] = useState<{ message: string, query: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -129,18 +131,29 @@ function App() {
     if (prefix.length < 3) {
       setSuggestions([]);
       setDebug(null);
+      setError(null);
       return;
     }
+    
+    setIsLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/api/suggest?q=${prefix}&algorithm=${algorithm}`);
+      if (!res.ok) throw new Error('API Error');
       const data = await res.json();
       setSuggestions(data);
 
       const dbgRes = await fetch(`${API_URL}/api/cache/debug?prefix=${prefix}`);
-      const dbgData = await dbgRes.json();
-      setDebug(dbgData);
+      if (dbgRes.ok) {
+        const dbgData = await dbgRes.json();
+        setDebug(dbgData);
+      }
     } catch (err) {
       console.error('Error fetching suggestions:', err);
+      setError('Failed to fetch suggestions. Please check your connection.');
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -217,11 +230,26 @@ function App() {
                 onKeyDown={handleKeyDown}
                 onFocus={() => query.length >= 3 && setShowDropdown(true)}
               />
+              <button className="search-submit-btn" onClick={() => handleSearchSubmit(query)}>
+                <ArrowRight size={20} />
+              </button>
             </div>
 
-            {showDropdown && suggestions.length > 0 && (
+            {showDropdown && (isLoading || error || suggestions.length > 0) && (
               <div className="suggestions-dropdown">
-                {suggestions.map((item, idx) => {
+                {isLoading && (
+                  <div className="dropdown-status">
+                    <Loader2 className="spinner" size={20} /> Loading suggestions...
+                  </div>
+                )}
+                
+                {error && !isLoading && (
+                  <div className="dropdown-status error">
+                    <AlertCircle size={18} /> {error}
+                  </div>
+                )}
+
+                {!isLoading && !error && suggestions.map((item, idx) => {
                   // Bold the matching prefix
                   const matchLen = query.length;
                   const boldPart = item.query.substring(0, matchLen);

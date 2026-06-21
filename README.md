@@ -88,13 +88,40 @@ Exposes the Consistent Hashing routing logic for educational purposes.
     "prefix": "iphone",
     "nodeName": "redis-2:6379",
     "isHit": true,
+    "ttl": 58,
+    "nodeIndex": 2,
+    "totalNodes": 3,
     "cachedValue": [...]
   }
   ```
 
 ---
 
-## 4. Explanations of Design Choices and Trade-offs
+## 4. Ranking Algorithms: Basic vs. Decay (Spec Requirement)
+
+To provide highly relevant autocomplete suggestions, the system supports two distinct ranking algorithms:
+
+### 1. Basic (All-Time Count)
+This algorithm simply sorts queries by their absolute historical frequency. It is excellent for finding universally popular searches.
+
+### 2. Recency-Aware (Exponential Decay)
+This algorithm uses a continuous exponential decay formula to heavily prioritize *recently trending* queries over historically popular ones. 
+$$Score_{new} = Score_{old} \times e^{-\lambda \cdot (t - t_{last})} + 1$$
+
+### Demonstration (Example: Prefix `"cov"`)
+If you start typing `"cov"`, the two algorithms yield entirely different results based on temporal relevance:
+
+| Rank | Basic Algorithm (All-Time Count) | Recency-Aware Algorithm (Decayed Score) |
+| :--- | :--- | :--- |
+| **1** | `cover letter` (1,200,000 all-time) | `covid 19` (Trending heavily right now) |
+| **2** | `cover song` (800,000 all-time) | `covenant movie` (Just released) |
+| **3** | `cove resort` (300,000 all-time) | `cover letter` (Consistently searched) |
+
+As shown, the Recency-Aware algorithm surfaces "covid 19" and recent movie releases because their counts spiked recently, despite having lower all-time counts than "cover letter".
+
+---
+
+## 5. Explanations of Design Choices and Trade-offs
 
 ### AP over CP System (CAP Theorem)
 Typeahead suggestions don't strictly demand strong consistency. If a user sees a suggestion count of 100,000 instead of 100,005, it doesn't break the application. Therefore, our cache updating path relies on **eventual consistency**. We optimized for Availability and Low Latency (PA/EL in PACELC).
