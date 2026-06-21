@@ -2,11 +2,6 @@ import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
 import { pool } from './database';
-import Filter from 'bad-words';
-
-// We configure bad-words with some custom filters commonly found in the AOL dataset
-const filter = new Filter();
-filter.addWords('lolita', 'teenfuns', 'cherryteenthumbs', 'amateursexhunters', 'drunkenmature', 'wetcircle', 'jizzhut', 'makehimsuffer', 'makehimpay');
 
 const DATA_FILE = path.resolve(__dirname, '../../data/user-ct-test-collection-02.txt');
 
@@ -21,6 +16,17 @@ interface QueryData {
 }
 
 async function runSeed() {
+  const BAD_WORDS = [
+    'porn', 'sex', 'lolita', 'mature', 'vagina', 'naked', 'erotic', 'xxx', 'teen', 
+    'teenfuns', 'amateursexhunters', 'drunkenmature', 'cherryteenthumbs', 'penis', 
+    'boobs', 'adult', 'fetish', 'milf', 'hentai', 'playboy', 'vulgar', 'orgasm', 
+    'masturbat', 'clitoris', 'anal', 'lesbian', 'gay', 'escort', 'whore', 'slut', 
+    'prostitute', 'wetcircle', 'jizzhut', 'makehimsuffer', 'makehimpay'
+  ];
+  
+  const isProfane = (query: string) => {
+    return BAD_WORDS.some(word => query.includes(word));
+  };
   console.log(`Starting data ingestion from ${DATA_FILE}...`);
   if (!fs.existsSync(DATA_FILE)) {
     console.error('Data file not found!');
@@ -56,7 +62,7 @@ async function runSeed() {
     if (query.length < 2 || !/[a-z0-9]/.test(query)) continue;
 
     // Profanity Filter Check
-    if (filter.isProfane(query)) {
+    if (isProfane(query)) {
       explicitFiltered++;
       continue;
     }
