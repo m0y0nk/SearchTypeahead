@@ -2,8 +2,8 @@
 
 > *A lightning-fast, distributed search suggestion engine built to handle high-throughput queries with minimal database strain.*
 
-![Typeahead UI Screenshot](./screenshots/hero-ui.png)
-*Placeholder: Replace with a screenshot of the main React UI.*
+![Typeahead UI Overview](./screenshots/ui_overview.png)
+*The main search interface, featuring real-time analytics, consistent hashing cache debugging, and dual-algorithm ranking.*
 
 ## 1. Architecture Diagram & Explanation
 
@@ -79,6 +79,8 @@ Submits a query to update its search count. Returns a dummy response immediately
 - **Body:** `{ "query": "iphone 16" }`
 - **Response:** `{ "message": "Searched", "query": "iphone 16" }`
 
+![Search History](./screenshots/search_history.png)
+
 ### `GET /api/cache/debug`
 Exposes the Consistent Hashing routing logic for educational purposes.
 - **Query Params:** `prefix=iphone`
@@ -109,6 +111,9 @@ This algorithm uses a continuous exponential decay formula to heavily prioritize
 $$Score_{new} = Score_{old} \times e^{-\lambda \cdot (t - t_{last})} + 1$$
 
 ### Demonstration (Example: Prefix `"cov"`)
+![Suggestions Dropdown](./screenshots/suggestions_dropdown.png)
+*The suggestions dropdown in action, querying the distributed Redis cluster in real-time.*
+
 If you start typing `"cov"`, the two algorithms yield entirely different results based on temporal relevance:
 
 | Rank | Basic Algorithm (All-Time Count) | Recency-Aware Algorithm (Decayed Score) |
@@ -145,8 +150,8 @@ $$Score_{new} = Score_{old} \times e^{-\lambda \cdot (t - t_{last})} + 1$$
 
 ## 5. Performance Report 🚀
 
-![Analytics Dashboard Screenshot](./screenshots/analytics.png)
-*Placeholder: Replace with a screenshot of the Analytics and Cache Debugger panel.*
+![Analytics Dashboard Screenshot](./screenshots/analytics_panel.png)
+*Live analytics tracking cache hit rates, decoupled batch queue sizes, and instantaneous API latencies.*
 
 Our system was designed with scale in mind. By decoupling the read and write paths and aggressively caching frequent prefixes, the performance gains are massive. Here is a breakdown of the system's operational efficiency:
 
