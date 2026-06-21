@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: typeahead-postgres
+    environment:
+      POSTGRES_USER: typeahead
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: typeahead
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U typeahead"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-1:
+    image: redis:7-alpine
+    container_name: typeahead-redis-1
+    ports:
+      - "6379:6379"
+
+  redis-2:
+    image: redis:7-alpine
+    container_name: typeahead-redis-2
+    ports:
+      - "6380:6379"
+
+  redis-3:
+    image: redis:7-alpine
+    container_name: typeahead-redis-3
+    ports:
+      - "6381:6379"
+
+  backend:
+    build: ./backend
+    container_name: typeahead-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=typeahead
+      - DB_PASSWORD=password
+      - DB_NAME=typeahead
+      - REDIS_NODES=redis-1:6379,redis-2:6379,redis-3:6379
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-1:
+        condition: service_started
+      redis-2:
+        condition: service_started
+      redis-3:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: typeahead-frontend
+    ports:
+      - "5174:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
