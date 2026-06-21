@@ -94,7 +94,7 @@ export class BatchWriter {
           VALUES ($1, $2, $3, $4)
           ON CONFLICT (query) DO UPDATE SET
             all_time_count = queries.all_time_count + EXCLUDED.all_time_count,
-            decayed_score = (queries.decayed_score * EXP(-$5 * EXTRACT(EPOCH FROM (EXCLUDED.last_searched_at - queries.last_searched_at)))) + EXCLUDED.decayed_score,
+            decayed_score = (queries.decayed_score * EXP(-CAST($5 AS FLOAT) * EXTRACT(EPOCH FROM (EXCLUDED.last_searched_at - queries.last_searched_at)))) + EXCLUDED.decayed_score,
             last_searched_at = EXCLUDED.last_searched_at;
         `;
         
