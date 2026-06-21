@@ -30,6 +30,10 @@ export class BatchWriter {
     if (this.flushTimer) clearInterval(this.flushTimer);
   }
 
+  public getQueueSize() {
+    return this.buffer.size;
+  }
+
   public recordSearch(query: string) {
     // Normalize query
     query = query.toLowerCase().trim();

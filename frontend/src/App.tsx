@@ -14,14 +14,81 @@ interface Analytics {
   cacheHits: number;
   hitRate: string;
   averageLatencyMs: string;
+  p95LatencyMs: string;
+  dbReads: number;
   dbWritesAvoided: number;
+  batchQueueSize: number;
+  recentLatencies: number[];
 }
 
 interface CacheDebug {
   prefix: string;
   nodeName: string;
   isHit: boolean;
+  ttl?: number;
+  nodeIndex: number;
+  totalNodes: number;
 }
+
+const Sparkline = ({ data }: { data: number[] }) => {
+  if (!data || data.length === 0) return null;
+  const max = Math.max(...data, 10);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', height: '30px', gap: '3px', marginTop: '10px' }}>
+      {data.map((val, i) => {
+        const heightPct = (val / max) * 100;
+        return (
+          <div key={i} style={{
+            flex: 1,
+            backgroundColor: '#38bdf8',
+            height: `${Math.max(10, heightPct)}%`,
+            borderRadius: '2px 2px 0 0',
+            opacity: 0.5 + (0.5 * (i / data.length)),
+            transition: 'height 0.3s'
+          }} title={`${val}ms`} />
+        );
+      })}
+    </div>
+  );
+};
+
+const HashRing = ({ totalNodes, activeIndex }: { totalNodes: number, activeIndex: number }) => {
+  if (!totalNodes) return null;
+  const radius = 25;
+  const center = 30;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <circle cx="30" cy="30" r="25" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
+        {Array.from({ length: totalNodes }).map((_, i) => {
+          const angle = (i * (360 / totalNodes) - 90) * (Math.PI / 180);
+          const x = center + radius * Math.cos(angle);
+          const y = center + radius * Math.sin(angle);
+          const isActive = (i + 1) === activeIndex;
+          
+          return (
+            <circle 
+              key={i} cx={x} cy={y} 
+              r={isActive ? 6 : 4} 
+              fill={isActive ? '#a855f7' : '#475569'} 
+              stroke={isActive ? '#fff' : 'none'}
+              strokeWidth={isActive ? 2 : 0}
+              style={{ transition: 'all 0.3s ease' }}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+const getHitRateColor = (rateStr: string) => {
+  const rate = parseFloat(rateStr);
+  if (isNaN(rate)) return '#38bdf8';
+  if (rate > 60) return '#10b981';
+  if (rate >= 30) return '#f59e0b';
+  return '#ef4444';
+};
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -238,8 +305,20 @@ function App() {
           <div className="debug-info">
             {debug ? (
               <>
-                <div><strong>Prefix:</strong> "{debug.prefix}"</div>
-                <div><strong>Routed Node:</strong> {debug.nodeName}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <strong>Prefix:</strong> <span>"{debug.prefix}"</span>
+                  <span style={{ 
+                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold',
+                    backgroundColor: debug.isHit ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                    color: debug.isHit ? '#10b981' : '#f59e0b'
+                  }}>
+                    {debug.isHit ? 'HIT' : 'MISS'}
+                  </span>
+                </div>
+                <div><strong>Routed Node:</strong> {debug.nodeName} (Node {debug.nodeIndex} of {debug.totalNodes})</div>
+                {debug.ttl !== undefined && <div><strong>TTL Remaining:</strong> {debug.ttl}s</div>}
+                
+                <HashRing totalNodes={debug.totalNodes} activeIndex={debug.nodeIndex} />
               </>
             ) : (
               <div style={{ color: 'var(--text-secondary)' }}>Type 3+ chars to see routing info</div>
@@ -251,7 +330,9 @@ function App() {
           <div className="panel-title"><Activity size={18} color="#38bdf8" /> Analytics</div>
           <div className="metric-grid">
             <div className="metric-card">
-              <div className="metric-value">{analytics?.hitRate || '0%'}</div>
+              <div className="metric-value" style={{ color: getHitRateColor(analytics?.hitRate || '0%') }}>
+                {analytics?.hitRate || '0%'}
+              </div>
               <div className="metric-label">Cache Hit Rate</div>
             </div>
             <div className="metric-card">
@@ -259,13 +340,25 @@ function App() {
               <div className="metric-label">Avg Latency</div>
             </div>
             <div className="metric-card">
-              <div className="metric-value">{analytics?.totalRequests || 0}</div>
-              <div className="metric-label">Total Requests</div>
+              <div className="metric-value">{analytics?.p95LatencyMs || '0'}ms</div>
+              <div className="metric-label">P95 Latency</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{analytics?.dbReads || 0}</div>
+              <div className="metric-label">DB Reads</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{analytics?.batchQueueSize || 0}</div>
+              <div className="metric-label">Batch Queue</div>
             </div>
             <div className="metric-card">
               <div className="metric-value">{analytics?.dbWritesAvoided || 0}</div>
               <div className="metric-label">Writes Avoided</div>
             </div>
+          </div>
+          <div style={{ marginTop: '1rem' }}>
+            <div className="metric-label">Recent Latency (last 10)</div>
+            <Sparkline data={analytics?.recentLatencies || []} />
           </div>
         </div>
       </div>

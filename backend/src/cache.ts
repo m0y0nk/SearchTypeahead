@@ -95,13 +95,47 @@ export class CacheManager {
     }
   }
 
-  public getDebugInfo(prefix: string): CacheDebugResponse {
+  public async getDebugInfo(prefix: string, algorithm: 'basic' | 'decay' = 'basic'): Promise<CacheDebugResponse> {
     const route = this.getClientForPrefix(prefix);
+    if (!route || !route.client) {
+      return {
+        prefix,
+        nodeName: 'unknown',
+        isHit: false,
+        nodeIndex: 0,
+        totalNodes: this.clients.size,
+        cachedValue: null
+      };
+    }
+
+    const key = `suggest:${algorithm}:${prefix}`;
+    let isHit = false;
+    let ttl: number | undefined = undefined;
+    let cachedValue = null;
+
+    try {
+      const data = await route.client.get(key);
+      if (data) {
+        isHit = true;
+        cachedValue = JSON.parse(data);
+        ttl = await route.client.ttl(key);
+      }
+    } catch (err) {
+      console.error('Error fetching debug info from Redis:', err);
+    }
+
+    // Determine node index simply by its position in the Map keys
+    const nodes = Array.from(this.clients.keys());
+    const nodeIndex = nodes.indexOf(route.ringInfo.physicalNode) + 1;
+
     return {
       prefix,
-      nodeName: route?.ringInfo.physicalNode || 'unknown',
-      isHit: false, // Updated by caller
-      cachedValue: null
+      nodeName: route.ringInfo.physicalNode,
+      isHit,
+      ttl: ttl !== undefined && ttl >= 0 ? ttl : undefined,
+      nodeIndex,
+      totalNodes: nodes.length,
+      cachedValue
     };
   }
 }

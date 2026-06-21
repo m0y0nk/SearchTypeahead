@@ -10,5 +10,8 @@ export interface CacheDebugResponse {
   prefix: string;
   nodeName: string;
   isHit: boolean;
+  ttl?: number;
+  nodeIndex: number;
+  totalNodes: number;
   cachedValue: Suggestion[] | null;
 }
